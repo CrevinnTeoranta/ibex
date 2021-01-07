@@ -132,14 +132,20 @@
       - "xrun -64bit -access +rwc -f <cwd>/files.f
               +incdir+<setting>
               +incdir+<user_extension>
-              -q -sv -uvm -vlog_ext +.vh -I.
+              -sv -uvm -vlog_ext +.vh -I.
               -uvmhome CDNS-1.2
               -elaborate
-              -l <out>/compile.log <cmp_opts>
+              -l <out>/compile.log <cmp_opts> <cov_opts>
               -xmlibdirpath <out>"
+    cov_opts: >
+      -coverage all
+      -covworkdir <out>/cov_work
   sim:
     cmd: >
-      xrun -R -xmlibdirpath <out> <sim_opts> -svseed <seed> -svrnc rand_struct -nokey
+      xrun -R -xmlibdirpath <out> <sim_opts> <cov_opts> -svseed <seed> -svrnc rand_struct -nokey
+    cov_opts: >
+      -coverage all
+      -covworkdir <out>/cov_work
 
 - tool: pyflow
   sim:

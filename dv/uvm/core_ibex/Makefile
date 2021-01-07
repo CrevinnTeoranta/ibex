@@ -32,7 +32,7 @@ SIM_OPTS            :=
 # Enable waveform dumping
 WAVES               := 1
 # Enable coverage dump
-COV                 := 0
+COV                 := 1
 # RTL simulator
 SIMULATOR           := vcs
 # ISS (spike, ovpsim)
@@ -422,6 +422,7 @@ fcov:
           --core ibex \
           --dir ${OUT-SEED}/rtl_sim \
           -o ${OUT-SEED}/fcov \
+          --simulator="${SIMULATOR}" \
           --isa rv32imcb \
           --custom_target riscv_dv_extension
 

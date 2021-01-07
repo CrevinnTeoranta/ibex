@@ -140,7 +140,6 @@
   compile:
     cmd:
       - "xrun -64bit
-              -q
               -f ibex_dv.f
               -sv
               -licqueue
@@ -151,9 +150,13 @@
               -l <out>/compile.log
               -xmlibdirpath <out>
               <cmp_opts>
-              <wave_opts>"
+              <wave_opts>
+              <cov_opts>"
     wave_opts: >
       -access rwc -linedebug
+    cov_opts: >
+      -coverage all
+      -covworkdir <out>/cov_work
   sim:
     cmd: >
       xrun -64bit
@@ -169,6 +172,10 @@
            -nokey
            <sim_opts>
            <wave_opts>
+           <cov_opts>
+    cov_opts: >
+      -coverage all
+      -covworkdir <out>/cov_work
     wave_opts: >
       -input @"database -open <sim_dir>/waves -shm -default"
       -input @"probe -create core_ibex_tb_top -all -depth all -variables"
