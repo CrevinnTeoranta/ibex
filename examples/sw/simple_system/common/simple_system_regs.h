@@ -15,4 +15,6 @@
 #define TIMER_MTIMECMP 0x8
 #define TIMER_MTIMECMPH 0xC
 
+#define TOE_BASE 0x40000
+
 #endif  // SIMPLE_SYSTEM_REGS_H__
