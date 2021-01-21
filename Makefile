@@ -79,6 +79,15 @@ program-arty:
 	fusesoc --cores-root=. run --target=synth --run \
 		lowrisc:ibex:top_artya7
 
+.PHONY: program-artix7
+program-artix7:
+	fusesoc --cores-root=. run --target=synth --run \
+		lowrisc:ibex:top_artix7
+
+.PHONY: build-artix7-100
+build-artix7-100: sw-led
+	fusesoc --cores-root=. run --target=synth --setup --build \
+		lowrisc:ibex:top_artix7 --part xc7a100tcsg324-1
 
 # Lint check
 .PHONY: lint-core-tracing
