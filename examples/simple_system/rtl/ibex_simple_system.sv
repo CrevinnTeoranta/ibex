@@ -50,8 +50,13 @@ module ibex_simple_system (
   parameter bit                 BranchPredictor          = 1'b0;
   parameter                     SRAMInitFile             = "";
 
+  parameter bit                 PipeLine          = 1'b0;
+
   import axi_pkg::*;
   import top_pkg::*;
+
+  localparam int FifoPass = PipeLine ? 1'b0 : 1'b1;
+  localparam int FifoDepth = PipeLine ? 4'h2 : 4'h0;
 
   logic clk_sys = 1'b0, rst_sys_n;
 
@@ -135,9 +140,22 @@ module ibex_simple_system (
   assign device_err[Ram] = 1'b0;
   assign device_err[SimCtrl] = 1'b0;
 
-  // ToE signals
-  axi_pkg::axi_h2d_t host2toe_axi;
-  axi_pkg::axi_d2h_t toe2host_axi;
+  // Data memory interface
+  //axi_pkg::axi_h2d_t axi_i_o; // This would be an output from Ibex wrapper
+  //axi_pkg::axi_d2h_t axi_i_i; // This would be an input to Ibex wrapper
+  axi_pkg::axi_h2d_t axi_d_o; // This would be an output from Ibex wrapper
+  axi_pkg::axi_d2h_t axi_d_i; // This would be an input to Ibex wrapper
+
+  // Pipeline signals
+  //axi_pkg::axi_h2d_t axi_i_host2fifo;
+  //axi_pkg::axi_d2h_t axi_i_fifo2host;
+  axi_pkg::axi_h2d_t axi_d_host2fifo;
+  axi_pkg::axi_d2h_t axi_d_fifo2host;
+
+  // Intermediate TL signals to connect an sram used in simulations.
+  axi_pkg::axi_h2d_t axi_d_o_int;
+  axi_pkg::axi_d2h_t axi_d_i_int;
+
 
   bus #(
     .NrDevices    ( NrDevices ),
@@ -305,9 +323,26 @@ module ibex_simple_system (
       .rdata_o (device_rdata[ToE]),
       .err_o   (device_err[ToE]),
 
-      .axi_o   (host2toe_axi),
-      .axi_i   (toe2host_axi)
+      .axi_o   (axi_d_host2fifo),
+      .axi_i   (axi_d_fifo2host)
     );
+
+  axi_fifo_sync #(
+    .ReqPass(FifoPass),
+    .RspPass(FifoPass),
+    .ReqDepth(FifoDepth),
+    .RspDepth(FifoDepth)
+  ) fifo_d (
+    .clk_i       (clk_sys),
+    .rst_ni      (rst_sys_n),
+    .axi_h_i     (axi_d_host2fifo),
+    .axi_h_o     (axi_d_fifo2host),
+    .axi_d_o     (axi_d_o_int),
+    .axi_d_i     (axi_d_i_int),
+    .spare_req_i (1'b0),
+    .spare_req_o (),
+    .spare_rsp_i (1'b0),
+    .spare_rsp_o ());
 
   toe #(
     .DataWidth    (top_pkg::AXI_DW),
@@ -316,9 +351,12 @@ module ibex_simple_system (
       .clk_i      (clk_sys),
       .rst_ni     (rst_sys_n),
 
-      .axi_o      (toe2host_axi),
-      .axi_i      (host2toe_axi)
+      .axi_o      (axi_d_i),
+      .axi_i      (axi_d_o)
     );
+
+  assign axi_d_o = axi_d_o_int;
+  assign axi_d_i_int = axi_d_i;
 
   // Crevinn Additions END   ---------------------------------------------
 
