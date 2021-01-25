@@ -11,7 +11,10 @@ module top_artix7 (
   parameter int          MEM_SIZE     = 64 * 1024; // 64 kB
   parameter logic [31:0] MEM_START    = 32'h00000000;
   parameter logic [31:0] MEM_MASK     = MEM_SIZE-1;
-  parameter              SRAMInitFile = "";
+  //parameter              SRAMInitFile = "";
+  //parameter              SRAMInitFile = "../../../sw/led/led.vmem";
+  // NOTE: Path relative to: build/lowrisc_ibex_top_artix7_tb_0.1/sim-xcelium/ 
+  parameter              SRAMInitFile = "../../../examples/sw/led/led.vmem";
 
   logic clk_sys, rst_sys_n;
 
@@ -157,13 +160,37 @@ module top_artix7 (
   assign led_o[3:0] = leds;
   assign led_o[15:4] = 12'd0;
 
+`ifdef TOP_ARTIX7_SIM
+  reg fpga_clock;
+  reg fpga_reset_n;
+
+  parameter FPGA_CLOCK_PERIOD = 10;
+  initial 
+  begin
+    fpga_clock = 1'b0;
+    fpga_reset_n = 1'b0;
+    repeat (50) @(posedge fpga_clock);
+    fpga_reset_n = 1'b0;
+    @(posedge fpga_clock);
+    fpga_reset_n = 1'b1;  
+  end
+
+  always #(FPGA_CLOCK_PERIOD/2) fpga_clock = ~fpga_clock;
+
+  assign clk_sys = fpga_clock;
+  assign rst_sys_n = fpga_reset_n;
+`else
   // Clock and reset
   clkgen_xil7series
     clkgen(
-      .IO_CLK,
-      .IO_RST_N,
-      .clk_sys,
-      .rst_sys_n
+      .IO_CLK(IO_CLK),
+      .IO_RST_N(IO_RST_N),
+      .clk_sys(clk_sys),
+      .rst_sys_n(rst_sys_n)
     );
+
+  //assign rst_sys_n = IO_RST_N;
+`endif
+
 
 endmodule

@@ -2,21 +2,19 @@ CAPI=2:
 # Copyright lowRISC contributors.
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
-name: "lowrisc:ibex:top_artix7:0.1"
+name: "lowrisc:ibex:top_artix7_tb:0.1"
 description: "Ibex example toplevel for Artix 7 Nexys4_DDR boards (100T FPGA)"
 filesets:
   files_rtl_artix7:
     depend:
       - lowrisc:ibex:ibex_core
-      - lowrisc:ibex:fpga_xilinx_shared
+      - lowrisc:ibex:sim_shared
+#      - lowrisc:ibex:fpga_xilinx_shared
     files:
-      - rtl/top_artix7.sv
+#      - ../../../../shared/rtl/ram_1p.sv
+      - ../rtl/top_artix7.sv
+#      - ../../../../dv/uvm/core_ibex/common/prim/prim_ram_1p.sv
     file_type: systemVerilogSource
-
-  files_constraints:
-    files:
-      - data/pins_artix7.xdc
-    file_type: xdc
 
 parameters:
   # XXX: This parameter needs to be absolute, or relative to the *.runs/synth_1
@@ -28,7 +26,7 @@ parameters:
   SRAMInitFile:
     datatype: str
     description: SRAM initialization file in vmem hex format
-    default: "../../../../../examples/sw/led/led.vmem"
+    default: "../../../examples/sw/led/led.vmem"
     paramtype: vlogparam
 
   # For value definition, please see ip/prim/rtl/prim_pkg.sv
@@ -37,16 +35,30 @@ parameters:
     paramtype: vlogdefine
     description: Primitives implementation to use, e.g. "prim_pkg::ImplGeneric".
 
+  TOP_ARTIX7_SIM:
+    datatype: int
+    paramtype: vlogdefine
+    default: 1
+    description: "Enable simulation mode for this FPGA build"
+
 targets:
-  synth:
-    default_tool: vivado
+  default: &default_target
     filesets:
       - files_rtl_artix7
-      - files_constraints
     toplevel: top_artix7
     parameters:
+      - TOP_ARTIX7_SIM=1
       - SRAMInitFile
-      - PRIM_DEFAULT_IMPL=prim_pkg::ImplXilinx
+      - PRIM_DEFAULT_IMPL=prim_pkg::ImplGeneric
+  sim:
+    <<: *default_target
+    default_tool: xcelium
     tools:
-      vivado:
-        part: "xc7a100tcsg324-1" # Default to Artix7 A7-100
+      xcelium:
+        xrun_options:
+          - '-64bit -l sim.log -licqueue -sv'
+          - '-access rwc -linedebug'
+          - '-input @"database -open waves -shm -default"'
+          - '-input @"probe -create top_artix7 -all -depth all -variables"'
+          - '-input @"run 1000ns"'
+          - '-input @"exit"'

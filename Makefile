@@ -89,6 +89,16 @@ build-artix7-100: sw-led
 	fusesoc --cores-root=. run --target=synth --setup --build \
 		lowrisc:ibex:top_artix7 --part xc7a100tcsg324-1
 
+.PHONY: build-artix7-100_tb
+build-artix7-100_tb: sw-led
+	fusesoc --cores-root=. run --target=sim --tool=xcelium --setup --build \
+		lowrisc:ibex:top_artix7_tb
+
+.PHONY: run-artix7-100_tb
+run-artix7-100_tb: sw-led
+	fusesoc --cores-root=. run --target=sim --tool=xcelium --run \
+		lowrisc:ibex:top_artix7_tb
+ 
 # Lint check
 .PHONY: lint-core-tracing
 lint-core-tracing:
