@@ -50,6 +50,14 @@ module ibex_simple_system (
   parameter bit                 BranchPredictor          = 1'b0;
   parameter                     SRAMInitFile             = "";
 
+  parameter bit                 PipeLine          = 1'b0;
+
+  import axi_pkg::*;
+  import top_pkg::*;
+
+  localparam int FifoPass = PipeLine ? 1'b0 : 1'b1;
+  localparam int FifoDepth = PipeLine ? 4'h2 : 4'h0;
+
   logic clk_sys = 1'b0, rst_sys_n;
 
   typedef enum logic {
@@ -59,52 +67,55 @@ module ibex_simple_system (
   typedef enum logic[1:0] {
     Ram,
     SimCtrl,
-    Timer
+    Timer,
+    ToE // TODO priority
   } bus_device_e;
 
-  localparam int NrDevices = 3;
+  localparam int NrDevices = 4;
   localparam int NrHosts = 1;
 
   // interrupts
   logic timer_irq;
 
   // host and device signals
-  logic           host_req    [NrHosts];
-  logic           host_gnt    [NrHosts];
-  logic [31:0]    host_addr   [NrHosts];
-  logic           host_we     [NrHosts];
-  logic [ 3:0]    host_be     [NrHosts];
-  logic [31:0]    host_wdata  [NrHosts];
-  logic           host_rvalid [NrHosts];
-  logic [31:0]    host_rdata  [NrHosts];
-  logic           host_err    [NrHosts];
+  logic                        host_req    [NrHosts];
+  logic                        host_gnt    [NrHosts];
+  logic [top_pkg::AXI_AW -1:0] host_addr   [NrHosts];
+  logic                        host_we     [NrHosts];
+  logic [top_pkg::AXI_DBW-1:0] host_be     [NrHosts];
+  logic [top_pkg::AXI_DW -1:0] host_wdata  [NrHosts];
+  logic                        host_rvalid [NrHosts];
+  logic [top_pkg::AXI_DW -1:0] host_rdata  [NrHosts];
+  logic                        host_err    [NrHosts];
 
   // devices (slaves)
-  logic           device_req    [NrDevices];
-  logic [31:0]    device_addr   [NrDevices];
-  logic           device_we     [NrDevices];
-  logic [ 3:0]    device_be     [NrDevices];
-  logic [31:0]    device_wdata  [NrDevices];
-  logic           device_rvalid [NrDevices];
-  logic [31:0]    device_rdata  [NrDevices];
-  logic           device_err    [NrDevices];
+  logic                        device_req    [NrDevices];
+  logic [top_pkg::AXI_AW -1:0] device_addr   [NrDevices];
+  logic                        device_we     [NrDevices];
+  logic [top_pkg::AXI_DBW-1:0] device_be     [NrDevices];
+  logic [top_pkg::AXI_DW -1:0] device_wdata  [NrDevices];
+  logic                        device_rvalid [NrDevices];
+  logic [top_pkg::AXI_DW -1:0] device_rdata  [NrDevices];
+  logic                        device_err    [NrDevices];
 
   // Device address mapping
-  logic [31:0] cfg_device_addr_base [NrDevices];
-  logic [31:0] cfg_device_addr_mask [NrDevices];
+  logic [top_pkg::AXI_AW-1:0] cfg_device_addr_base [NrDevices];
+  logic [top_pkg::AXI_AW-1:0] cfg_device_addr_mask [NrDevices];
   assign cfg_device_addr_base[Ram] = 32'h100000;
   assign cfg_device_addr_mask[Ram] = ~32'hFFFFF; // 1 MB
   assign cfg_device_addr_base[SimCtrl] = 32'h20000;
   assign cfg_device_addr_mask[SimCtrl] = ~32'h3FF; // 1 kB
   assign cfg_device_addr_base[Timer] = 32'h30000;
   assign cfg_device_addr_mask[Timer] = ~32'h3FF; // 1 kB
+  assign cfg_device_addr_base[ToE] = 32'h40000; // TODO address base
+  assign cfg_device_addr_mask[ToE] = ~32'h3FF; // TODO memory size
 
   // Instruction fetch signals
   logic instr_req;
   logic instr_gnt;
   logic instr_rvalid;
-  logic [31:0] instr_addr;
-  logic [31:0] instr_rdata;
+  logic [top_pkg::AXI_AW-1:0] instr_addr;
+  logic [top_pkg::AXI_DW-1:0] instr_rdata;
   logic instr_err;
 
   assign instr_gnt = instr_req;
@@ -129,11 +140,28 @@ module ibex_simple_system (
   assign device_err[Ram] = 1'b0;
   assign device_err[SimCtrl] = 1'b0;
 
+  // Data memory interface
+  //axi_pkg::axi_h2d_t axi_i_o; // This would be an output from Ibex wrapper
+  //axi_pkg::axi_d2h_t axi_i_i; // This would be an input to Ibex wrapper
+  axi_pkg::axi_h2d_t axi_d_o; // This would be an output from Ibex wrapper
+  axi_pkg::axi_d2h_t axi_d_i; // This would be an input to Ibex wrapper
+
+  // Pipeline signals
+  //axi_pkg::axi_h2d_t axi_i_host2fifo;
+  //axi_pkg::axi_d2h_t axi_i_fifo2host;
+  axi_pkg::axi_h2d_t axi_d_host2fifo;
+  axi_pkg::axi_d2h_t axi_d_fifo2host;
+
+  // Intermediate TL signals to connect an sram used in simulations.
+  axi_pkg::axi_h2d_t axi_d_o_int;
+  axi_pkg::axi_d2h_t axi_d_i_int;
+
+
   bus #(
     .NrDevices    ( NrDevices ),
     .NrHosts      ( NrHosts   ),
-    .DataWidth    ( 32        ),
-    .AddressWidth ( 32        )
+    .DataWidth    ( top_pkg::AXI_DW    ),
+    .AddressWidth ( top_pkg::AXI_AW    )
   ) u_bus (
     .clk_i               (clk_sys),
     .rst_ni              (rst_sys_n),
@@ -182,11 +210,11 @@ module ibex_simple_system (
       .clk_i                 (clk_sys),
       .rst_ni                (rst_sys_n),
 
-      .test_en_i             ('b0),
+      .test_en_i             (1'b0),
 
-      .hart_id_i             (32'b0),
+      .hart_id_i             (32'h0),
       // First instruction executed is at 0x0 + 0x80
-      .boot_addr_i           (32'h00100000),
+      .boot_addr_i           (top_pkg::AXI_AW'('h00100000)),
 
       .instr_req_o           (instr_req),
       .instr_gnt_i           (instr_gnt),
@@ -211,9 +239,9 @@ module ibex_simple_system (
       .irq_fast_i            (15'b0),
       .irq_nm_i              (1'b0),
 
-      .debug_req_i           ('b0),
+      .debug_req_i           (1'b0),
 
-      .fetch_enable_i        ('b1),
+      .fetch_enable_i        (1'b1),
       .alert_minor_o         (),
       .alert_major_o         (),
       .core_sleep_o          ()
@@ -237,9 +265,9 @@ module ibex_simple_system (
 
       .b_req_i     (instr_req),
       .b_we_i      (1'b0),
-      .b_be_i      (4'b0),
+      .b_be_i      (top_pkg::AXI_DBW'(0)),
       .b_addr_i    (instr_addr),
-      .b_wdata_i   (32'b0),
+      .b_wdata_i   (top_pkg::AXI_DW'(0)),
       .b_rvalid_o  (instr_rvalid),
       .b_rdata_o   (instr_rdata)
     );
@@ -260,8 +288,8 @@ module ibex_simple_system (
     );
 
   timer #(
-    .DataWidth    (32),
-    .AddressWidth (32)
+    .DataWidth    (top_pkg::AXI_DW),
+    .AddressWidth (top_pkg::AXI_AW)
     ) u_timer (
       .clk_i          (clk_sys),
       .rst_ni         (rst_sys_n),
@@ -276,6 +304,61 @@ module ibex_simple_system (
       .timer_err_o    (device_err[Timer]),
       .timer_intr_o   (timer_irq)
     );
+
+  // Crevinn Additions BEGIN ---------------------------------------------
+
+  axi_adapter_host #(
+    .MAX_REQS (2) // TODO changing this may affect adapter data flow
+    ) host2toe_adapter (
+      .clk_i   (clk_sys),
+      .rst_ni  (rst_sys_n),
+
+      .req_i   (device_req[ToE]),
+      .gnt_o   (),// TODO connect gnt correctly
+      .we_i    (device_we[ToE]),
+      .be_i    (device_be[ToE]),
+      .addr_i  (device_addr[ToE]),
+      .wdata_i (device_wdata[ToE]),
+      .valid_o (device_rvalid[ToE]),
+      .rdata_o (device_rdata[ToE]),
+      .err_o   (device_err[ToE]),
+
+      .axi_o   (axi_d_host2fifo),
+      .axi_i   (axi_d_fifo2host)
+    );
+
+  axi_fifo_sync #(
+    .ReqPass(FifoPass),
+    .RspPass(FifoPass),
+    .ReqDepth(FifoDepth),
+    .RspDepth(FifoDepth)
+  ) fifo_d (
+    .clk_i       (clk_sys),
+    .rst_ni      (rst_sys_n),
+    .axi_h_i     (axi_d_host2fifo),
+    .axi_h_o     (axi_d_fifo2host),
+    .axi_d_o     (axi_d_o_int),
+    .axi_d_i     (axi_d_i_int),
+    .spare_req_i (1'b0),
+    .spare_req_o (),
+    .spare_rsp_i (1'b0),
+    .spare_rsp_o ());
+
+  toe #(
+    .DataWidth    (top_pkg::AXI_DW),
+    .AddressWidth (top_pkg::AXI_AW)
+    ) u_toe (
+      .clk_i      (clk_sys),
+      .rst_ni     (rst_sys_n),
+
+      .axi_o      (axi_d_i),
+      .axi_i      (axi_d_o)
+    );
+
+  assign axi_d_o = axi_d_o_int;
+  assign axi_d_i_int = axi_d_i;
+
+  // Crevinn Additions END   ---------------------------------------------
 
   export "DPI-C" function mhpmcounter_get;
 
