@@ -50,13 +50,13 @@ module ibex_simple_system (
   parameter bit                 BranchPredictor          = 1'b0;
   parameter                     SRAMInitFile             = "";
 
-  parameter bit                 PipeLine          = 1'b0;
+  parameter bit                 HPipeLine                = 1'b0;
 
   import axi_pkg::*;
   import top_pkg::*;
 
-  localparam int FifoPass = PipeLine ? 1'b0 : 1'b1;
-  localparam int FifoDepth = PipeLine ? 4'h2 : 4'h0;
+  localparam int HFifoPass = HPipeLine ? 1'b0 : 1'b1;
+  localparam int HFifoDepth = HPipeLine ? 4'h2 : 4'h0;
 
   logic clk_sys = 1'b0, rst_sys_n;
 
@@ -104,11 +104,11 @@ module ibex_simple_system (
   assign cfg_device_addr_base[Ram] = 32'h100000;
   assign cfg_device_addr_mask[Ram] = ~32'hFFFFF; // 1 MB
   assign cfg_device_addr_base[SimCtrl] = 32'h20000;
-  assign cfg_device_addr_mask[SimCtrl] = ~32'hFFFF; // 1 kB
+  assign cfg_device_addr_mask[SimCtrl] = ~32'h3FF; // 1 kB
   assign cfg_device_addr_base[Timer] = 32'h30000;
-  assign cfg_device_addr_mask[Timer] = ~32'hFFFF; // 1 kB
+  assign cfg_device_addr_mask[Timer] = ~32'h3FF; // 1 kB
   assign cfg_device_addr_base[ToE] = 32'h40000; // TODO address base
-  assign cfg_device_addr_mask[ToE] = ~32'hFFFF; // TODO memory size
+  assign cfg_device_addr_mask[ToE] = ~32'h1FFFF; // TODO memory size 64 kB
 
   // Instruction fetch signals
   logic instr_req;
@@ -144,46 +144,9 @@ module ibex_simple_system (
   axi_pkg::axi_h2d_t axi_d_host2xbar;
   axi_pkg::axi_d2h_t axi_d_xbar2host;
 
-  // Intermediate connections to Fifos
-  //axi_pkg::axi_h2d_t axi_d_fifo2xbar;
-  //axi_pkg::axi_d2h_t axi_d_xbar2fifo;
-
   // Connections from xbar to devices
   axi_pkg::axi_h2d_t axi_d_xbar2device[NrDevices];
   axi_pkg::axi_d2h_t axi_d_device2xbar[NrDevices];
-
-
-/*  bus #(
-    .NrDevices    ( NrDevices ),
-    .NrHosts      ( NrHosts   ),
-    .DataWidth    ( top_pkg::AXI_DW    ),
-    .AddressWidth ( top_pkg::AXI_AW    )
-  ) u_bus (
-    .clk_i               (clk_sys),
-    .rst_ni              (rst_sys_n),
-
-    .host_req_i          (host_req     ),
-    .host_gnt_o          (host_gnt     ),
-    .host_addr_i         (host_addr    ),
-    .host_we_i           (host_we      ),
-    .host_be_i           (host_be      ),
-    .host_wdata_i        (host_wdata   ),
-    .host_rvalid_o       (host_rvalid  ),
-    .host_rdata_o        (host_rdata   ),
-    .host_err_o          (host_err     ),
-
-    .device_req_o        (device_req   ),
-    .device_addr_o       (device_addr  ),
-    .device_we_o         (device_we    ),
-    .device_be_o         (device_be    ),
-    .device_wdata_o      (device_wdata ),
-    .device_rvalid_i     (device_rvalid),
-    .device_rdata_i      (device_rdata ),
-    .device_err_i        (device_err   ),
-
-    .cfg_device_addr_base,
-    .cfg_device_addr_mask
-  );*/
 
   ibex_core_tracing #(
       .SecureIbex      ( SecureIbex      ),
@@ -244,7 +207,7 @@ module ibex_simple_system (
     );
 
   axi_adapter_host #(
-      .MAX_REQS (2**top_pkg::AXI_AIW-1)
+      .MAX_REQS (1)
     ) axi_d_host2xbar_adapter (
       .clk_i   (clk_sys),
       .rst_ni  (rst_sys_n),
@@ -263,23 +226,6 @@ module ibex_simple_system (
       .axi_i   (axi_d_xbar2host)
     );
 
-  /*axi_fifo_sync #(
-    .ReqPass(FifoPass),
-    .RspPass(FifoPass),
-    .ReqDepth(FifoDepth),
-    .RspDepth(FifoDepth)
-  ) axi_d_host2xbar_fifo (
-    .clk_i       (clk_sys),
-    .rst_ni      (rst_sys_n),
-    .axi_h_i     (axi_d_host2fifo),
-    .axi_h_o     (axi_d_fifo2host),
-    .axi_d_o     (axi_d_fifo2xbar),
-    .axi_d_i     (axi_d_xbar2fifo),
-    .spare_req_i (1'b0),
-    .spare_req_o (),
-    .spare_rsp_i (1'b0),
-    .spare_rsp_o ());*/
-
   // Create steering signal
   logic [2:0] dev_sel_s1n;
   always_comb begin
@@ -293,14 +239,16 @@ module ibex_simple_system (
   end
 
   axi_socket_1n #(
-    .HReqDepth (NrDevices'('0)),
-    .HRspDepth (NrDevices'('0)),
-    .DReqPass  (NrDevices'('1)),
-    .DRspPass  (NrDevices'('1)),
+    .N         (NrDevices),
+    .HReqPass  (HFifoPass),
+    .HRspPass  (HFifoPass),
+    .HReqDepth (HFifoDepth),
+    .HRspDepth (HFifoDepth),
+    .DReqPass  ((NrDevices'('1))),
+    .DRspPass  ((NrDevices'('1))),
     .DReqDepth ((NrDevices*4)'('0)),
-    .DRspDepth ((NrDevices*4)'('0)),
-    .N         (NrDevices)
-  ) u_s1n_27 (
+    .DRspDepth ((NrDevices*4)'('0))
+  ) u_s1n (
     .clk_i        (clk_sys),
     .rst_ni       (rst_sys_n),
     .axi_h_i      (axi_d_host2xbar),
@@ -311,9 +259,7 @@ module ibex_simple_system (
   );
 
   // SRAM block for instruction and data storage
-  axi_adapter_device #(
-    .MAX_REQS (2)
-    ) axi_d_xbar2ram_adapter (
+  axi_adapter_device axi_d_xbar2ram_adapter (
       .clk_i   (clk_sys),
       .rst_ni  (rst_sys_n),
 
@@ -355,9 +301,7 @@ module ibex_simple_system (
     );
 
   // Simulator Ctrl
-  axi_adapter_device #(
-    .MAX_REQS (2)
-    ) axi_d_xbar2simulatorctrl_adapter (
+  axi_adapter_device axi_d_xbar2simulatorctrl_adapter (
       .clk_i   (clk_sys),
       .rst_ni  (rst_sys_n),
 
@@ -390,9 +334,7 @@ module ibex_simple_system (
     );
 
   // Timer
-  axi_adapter_device #(
-    .MAX_REQS (2)
-    ) axi_d_xbar2timer_adapter (
+  axi_adapter_device axi_d_xbar2timer_adapter (
       .clk_i   (clk_sys),
       .rst_ni  (rst_sys_n),
 
@@ -428,22 +370,6 @@ module ibex_simple_system (
     );
 
   // ToE Stub
-  /*axi_fifo_sync #(
-    .ReqPass(FifoPass),
-    .RspPass(FifoPass),
-    .ReqDepth(FifoDepth),
-    .RspDepth(FifoDepth)
-  ) fifo_d (
-    .clk_i       (clk_sys),
-    .rst_ni      (rst_sys_n),
-    .axi_h_i     (axi_d_xbar2device[ToE]),
-    .axi_h_o     (axi_d_device2xbar[ToE]),
-    .axi_d_o     (axi_d_host2toe),
-    .axi_d_i     (axi_d_toe2host),
-    .spare_req_i (1'b0),
-    .spare_req_o (),
-    .spare_rsp_i (1'b0),
-    .spare_rsp_o ());*/
   toe #(
     .DataWidth    (top_pkg::AXI_DW),
     .AddressWidth (top_pkg::AXI_AW)
