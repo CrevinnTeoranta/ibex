@@ -82,7 +82,7 @@ module ibex_simple_system (
   logic                        host_gnt    [NrHosts];
   logic [top_pkg::AXI_AW -1:0] host_addr   [NrHosts];
   logic                        host_we     [NrHosts];
-  logic [top_pkg::AXI_DBW-1:0] host_be     [NrHosts];
+  logic [top_pkg::AXI_DSW-1:0] host_be     [NrHosts];
   logic [top_pkg::AXI_DW -1:0] host_wdata  [NrHosts];
   logic                        host_rvalid [NrHosts];
   logic [top_pkg::AXI_DW -1:0] host_rdata  [NrHosts];
@@ -92,7 +92,7 @@ module ibex_simple_system (
   logic                        device_req    [NrDevices];
   logic [top_pkg::AXI_AW -1:0] device_addr   [NrDevices];
   logic                        device_we     [NrDevices];
-  logic [top_pkg::AXI_DBW-1:0] device_be     [NrDevices];
+  logic [top_pkg::AXI_DSW-1:0] device_be     [NrDevices];
   logic [top_pkg::AXI_DW -1:0] device_wdata  [NrDevices];
   logic                        device_rvalid [NrDevices];
   logic [top_pkg::AXI_DW -1:0] device_rdata  [NrDevices];
@@ -293,7 +293,7 @@ module ibex_simple_system (
 
       .b_req_i     (instr_req),
       .b_we_i      (1'b0),
-      .b_be_i      (top_pkg::AXI_DBW'(0)),
+      .b_be_i      (top_pkg::AXI_DSW'(0)),
       .b_addr_i    (instr_addr),
       .b_wdata_i   (top_pkg::AXI_DW'(0)),
       .b_rvalid_o  (instr_rvalid),
