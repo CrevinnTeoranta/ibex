@@ -388,7 +388,7 @@ module ibex_simple_system (
   endfunction
 
 `ifdef UVM_TB
-  `include "BenGenUVM_tb.svh"
+  `include "BenGen_bridge_tb_top.sv"
 `endif
 
 endmodule
