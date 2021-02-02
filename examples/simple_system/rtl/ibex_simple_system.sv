@@ -387,4 +387,8 @@ module ibex_simple_system (
     return u_core.u_ibex_core.cs_registers_i.mhpmcounter[index];
   endfunction
 
+`ifdef UVM_TB
+  `include "BenGenUVM_tb.svh"
+`endif
+
 endmodule
