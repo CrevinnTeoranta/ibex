@@ -4,6 +4,17 @@
 #
 # Generate a baremetal application
 
+# Can seelct between the original Demo programme: RTOSDemo_zero_riscy and: RTOSDemo_ibex (changes to support ibex)
+PROGRAM ?= RTOSDemo_ibex
+#PROGRAM ?= RTOSDemo_zero_riscy
+
+# FreeRTOS source for DEMO 
+#FREERTOS_SRC_DIR=../../../../../../../freertos_202012.00/FreeRTOS
+FREERTOS_SRC_DIR=./FreeRTOSv202012.00/FreeRTOS
+
+# Directory that contains files modified from the FreeRTOS DEMO above. 
+FREERTOS_MOD_DIR=./FreeRTOSv202012.00/modified
+
 # riscv32-unknown-elf-gcc -msmall-data-limit=8 -mno-save-restore -O0 -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -fno-common -ffreestanding -fno-builtin -Wall -g -x assembler-with-cpp -DDEBUG -DportasmHANDLE_INTERRUPT=SystemIrqHandler -IC:\Users\PaulOK\Documents\projects\CreVinn\riscv_ibex\FreeRTOSv202012.00\FreeRTOS\Source\portable\GCC\RISC-V\chip_specific_extensions\Pulpino_Vega_RV32M1RM -c -o full_demo\RegTest.o ..\full_demo\RegTest.S 
 
 # riscv32-unknown-elf-gcc -msmall-data-limit=8 -mno-save-restore -O0 -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -fno-common -ffreestanding -fno-builtin -Wall -g -DDEBUG -DCPU_RV32M1_ri5cy -DPRINTF_FLOAT_ENABLE=0 -DSCANF_FLOAT_ENABLE=0 -DPRINTF_ADVANCED_ENABLE=0 -DSCANF_ADVANCED_ENABLE=0 -I../../../common -IC:\Users\PaulOK\Documents\projects\CreVinn\riscv_ibex\FreeRTOSv202012.00\FreeRTOS\Demo\Common\include -I../../../common/rv32m1_sdk_riscv/board -I../../../common/rv32m1_sdk_riscv/RISCV -I../../../common/rv32m1_sdk_riscv/devices/RV32M1 -I../../../common/rv32m1_sdk_riscv/devices/RV32M1/utilities -I../../../common/rv32m1_sdk_riscv/devices/RV32M1/drivers -IC:\Users\PaulOK\Documents\projects\CreVinn\riscv_ibex\FreeRTOSv202012.00\FreeRTOS\Demo\RISC-V_RV32M1_Vega_GCC_Eclipse\projects\RTOSDemo_ri5cy -IC:\Users\PaulOK\Documents\projects\CreVinn\riscv_ibex\FreeRTOSv202012.00\FreeRTOS\Source\portable\GCC\RISC-V -IC:\Users\PaulOK\Documents\projects\CreVinn\riscv_ibex\FreeRTOSv202012.00\FreeRTOS\Source\include -std=gnu99 -march=rv32imcxpulpv2 -Wa,-march=rv32imcxpulpv2 -c -o full_demo\common_demo_files\AbortDelay.o ..\..\..\..\Common\Minimal\AbortDelay.c 
@@ -91,18 +102,18 @@
 # ../../../../../../../freertos_202012.00/FreeRTOS/Source/portable/GCC/RISC-V/
 # ../../../../../../../freertos_202012.00/FreeRTOS/Source/include/
 # ../../../../../../../freertos_202012.00/FreeRTOS/Source/portable/GCC/RISC-V/chip_specific_extensions/Pulpino_Vega_RV32M1RM/
-FREERTOS_C_SRC_DIR_1=../../../../../../../freertos_202012.00/FreeRTOS/Source
-FREERTOS_C_SRC_DIR_2=../../../../../../../freertos_202012.00/FreeRTOS/Source/portable/MemMang
-FREERTOS_C_SRC_DIR_3=../../../../../../../freertos_202012.00/FreeRTOS/Source/portable/GCC/RISC-V
-FREERTOS_C_SRC_DIR_4=../../../../../../../freertos_202012.00/FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/projects/RTOSDemo_ri5cy/blinky_demo
-FREERTOS_C_SRC_DIR_5=../../../../../../../freertos_202012.00/FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/projects/RTOSDemo_ri5cy/full_demo
-FREERTOS_C_SRC_DIR_6=../../../../../../../freertos_202012.00/FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/projects/RTOSDemo_ri5cy
-FREERTOS_C_SRC_DIR_7=../../../../../../../freertos_202012.00/FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/devices/RV32M1/utilities
-FREERTOS_C_SRC_DIR_8=../../../../../../../freertos_202012.00/FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/devices/RV32M1/drivers
-FREERTOS_C_SRC_DIR_9=../../../../../../../freertos_202012.00/FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/devices/RV32M1
-FREERTOS_C_SRC_DIR_10=../../../../../../../freertos_202012.00/FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/board
-FREERTOS_C_SRC_DIR_11=../../../../../../../freertos_202012.00/FreeRTOS/Demo/Common/Minimal
-FREERTOS_C_SRC_DIR_12=../../../../../../../freertos_202012.00/FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common
+FREERTOS_C_SRC_DIR_1=$(FREERTOS_SRC_DIR)/Source
+FREERTOS_C_SRC_DIR_2=$(FREERTOS_SRC_DIR)/Source/portable/MemMang
+FREERTOS_C_SRC_DIR_3=$(FREERTOS_SRC_DIR)/Source/portable/GCC/RISC-V
+FREERTOS_C_SRC_DIR_4=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/projects/RTOSDemo_ri5cy/blinky_demo
+FREERTOS_C_SRC_DIR_5=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/projects/RTOSDemo_ri5cy/full_demo
+FREERTOS_C_SRC_DIR_6=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/projects/RTOSDemo_ri5cy
+FREERTOS_C_SRC_DIR_7=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/devices/RV32M1/utilities
+FREERTOS_C_SRC_DIR_8=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/devices/RV32M1/drivers
+FREERTOS_C_SRC_DIR_9=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/devices/RV32M1
+FREERTOS_C_SRC_DIR_10=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/board
+FREERTOS_C_SRC_DIR_11=$(FREERTOS_SRC_DIR)/Demo/Common/Minimal
+FREERTOS_C_SRC_DIR_12=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common
 FREERTOS_C_SRCS_1 = $(wildcard $(FREERTOS_C_SRC_DIR_1)/*.c)
 FREERTOS_C_SRCS_2 = $(wildcard $(FREERTOS_C_SRC_DIR_2)/*.c)
 FREERTOS_C_SRCS_3 = $(wildcard $(FREERTOS_C_SRC_DIR_3)/*.c)
@@ -111,34 +122,52 @@ FREERTOS_C_SRCS_5 = $(wildcard $(FREERTOS_C_SRC_DIR_5)/*.c)
 FREERTOS_C_SRCS_6 = $(wildcard $(FREERTOS_C_SRC_DIR_6)/*.c)
 FREERTOS_C_SRCS_7 = $(wildcard $(FREERTOS_C_SRC_DIR_7)/*.c)
 FREERTOS_C_SRCS_8 = $(wildcard $(FREERTOS_C_SRC_DIR_8)/*.c)
-#FREERTOS_C_SRCS_9 = $(FREERTOS_C_SRC_DIR_9)/system_RV32M1_ri5cy.c)
+
 FREERTOS_C_SRCS_9 = $(FREERTOS_C_SRC_DIR_9)/system_RV32M1_zero_riscy.c
+#ifeq ($(PROGRAM),RTOSDemo_zero_riscy_ORIG)
+#  FREERTOS_C_SRCS_9 = $(FREERTOS_C_SRC_DIR_9)/system_RV32M1_zero_riscy.c
+#else 
+#  FREERTOS_C_SRCS_9 ?= $(FREERTOS_MOD_DIR)/system_RV32M1_zero_riscy.c
+#endif
+
 FREERTOS_C_SRCS_10 = $(wildcard $(FREERTOS_C_SRC_DIR_10)/*.c)
 #FREERTOS_C_SRCS_11 = $(wildcard $(FREERTOS_C_SRC_DIR_11)/*.c)
 FREERTOS_C_SRCS_12 = $(wildcard $(FREERTOS_C_SRC_DIR_12)/*.c)
 
-FREERTOS_C_INC_DIR_1=../../../../../../../freertos_202012.00/FreeRTOS/Source/include
-FREERTOS_C_INC_DIR_2=../../../../../../../freertos_202012.00/FreeRTOS/Source/portable/GCC/RISC-V
-FREERTOS_C_INC_DIR_3=../../../../../../../freertos_202012.00/FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/projects/RTOSDemo_ri5cy
-FREERTOS_C_INC_DIR_4=../../../../../../../freertos_202012.00/FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common
-FREERTOS_C_INC_DIR_5=../../../../../../../freertos_202012.00/FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/board
-FREERTOS_C_INC_DIR_6=../../../../../../../freertos_202012.00/FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/devices/RV32M1/drivers
-FREERTOS_C_INC_DIR_7=../../../../../../../freertos_202012.00/FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/devices/RV32M1/utilities
-FREERTOS_C_INC_DIR_8=../../../../../../../freertos_202012.00/FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/devices/RV32M1
-FREERTOS_C_INC_DIR_9=../../../../../../../freertos_202012.00/FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/RISCV
-FREERTOS_C_INC_DIR_10=../../../../../../../freertos_202012.00/FreeRTOS/Demo/Common/include
+FREERTOS_C_INC_DIR_1=$(FREERTOS_SRC_DIR)/Source/include
+FREERTOS_C_INC_DIR_2=$(FREERTOS_SRC_DIR)/Source/portable/GCC/RISC-V
+FREERTOS_C_INC_DIR_3=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/projects/RTOSDemo_ri5cy
+FREERTOS_C_INC_DIR_4=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common
+FREERTOS_C_INC_DIR_5=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/board
+FREERTOS_C_INC_DIR_6=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/devices/RV32M1/drivers
+FREERTOS_C_INC_DIR_7=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/devices/RV32M1/utilities
+FREERTOS_C_INC_DIR_8=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/devices/RV32M1
+#ifeq ($(PROGRAM),RTOSDemo_zero_riscy_ORIG)
+#  FREERTOS_C_INC_DIR_8=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/devices/RV32M1
+#else 
+#  FREERTOS_C_INC_DIR_8=$(FREERTOS_MOD_DIR)
+#endif
+FREERTOS_C_INC_DIR_9=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/RISCV
+FREERTOS_C_INC_DIR_10=$(FREERTOS_SRC_DIR)/Demo/Common/include
 
 #FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/devices/RV32M1/
 
-FREERTOS_ASM_SRC_DIR_1=../../../../../../../freertos_202012.00/FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/devices/RV32M1/gcc
-FREERTOS_ASM_SRC_DIR_2=../../../../../../../freertos_202012.00/FreeRTOS/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/projects/RTOSDemo_ri5cy/full_demo
-FREERTOS_ASM_SRC_DIR_3=../../../../../../../freertos_202012.00/FreeRTOS/Source/portable/GCC/RISC-V
-#FREERTOS_ASM_SRCS_1 = $(FREERTOS_ASM_SRC_DIR_1)/startup_RV32M1_ri5cy.S
-FREERTOS_ASM_SRCS_1 =$(FREERTOS_ASM_SRC_DIR_1)/startup_RV32M1_zero_riscy.S
+FREERTOS_ASM_SRC_DIR_1=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/common/rv32m1_sdk_riscv/devices/RV32M1/gcc
+FREERTOS_ASM_SRC_DIR_2=$(FREERTOS_SRC_DIR)/Demo/RISC-V_RV32M1_Vega_GCC_Eclipse/projects/RTOSDemo_ri5cy/full_demo
+FREERTOS_ASM_SRC_DIR_3=$(FREERTOS_SRC_DIR)/Source/portable/GCC/RISC-V
+
+FREERTOS_ASM_SRCS_1 = $(FREERTOS_ASM_SRC_DIR_1)/startup_RV32M1_ri5cy.S
+# NOTE: Local copy of startup_RV32M1_zero_riscy.S as need to make changes to it for ibex 
+#ifeq ($(PROGRAM),RTOSDemo_zero_riscy_ORIG)
+#  FREERTOS_ASM_SRCS_1 =$(FREERTOS_ASM_SRC_DIR_1)/startup_RV32M1_zero_riscy.S
+#else
+#  FREERTOS_ASM_SRCS_1 =$(FREERTOS_MOD_DIR)/startup_RV32M1_zero_riscy.S
+#endif
+
 FREERTOS_ASM_SRCS_2 = $(wildcard $(FREERTOS_ASM_SRC_DIR_2)/*.S)
 FREERTOS_ASM_SRCS_3 = $(wildcard $(FREERTOS_ASM_SRC_DIR_3)/*.S)
 
-FREERTOS_ASM_INC_DIR_1=../../../../../../../freertos_202012.00/FreeRTOS/Source/portable/GCC/RISC-V/chip_specific_extensions/Pulpino_Vega_RV32M1RM
+FREERTOS_ASM_INC_DIR_1=$(FREERTOS_SRC_DIR)/Source/portable/GCC/RISC-V/chip_specific_extensions/Pulpino_Vega_RV32M1RM
 
 
 #FREERTOS_SRCS_1 = $(wildcard Source/*.c)
@@ -150,11 +179,13 @@ INCS := -I$(FREERTOS_C_INC_DIR_1) -I$(FREERTOS_C_INC_DIR_2) -I$(FREERTOS_C_INC_D
 
 DEF_CPU_INT_HANDLER = -DportasmHANDLE_INTERRUPT=SystemIrqHandler
 
-DEF_CPU_TYPE = -DCPU_RV32M1_zero_riscy
-#DEF_CPU_TYPE = -DCPU_RV32M1_ri5cy
+ifeq ($(PROGRAM),RTOSDemo_ibex)
+  DEF_CPU_TYPE1 = -DCPU_RV32M1_ibex
+endif
 
-PROGRAM ?= RTOSDemo_zero_riscy
-#PROGRAM ?= RTOSDemo_ri5cy
+DEF_CPU_TYPE2 = -DCPU_RV32M1_zero_riscy
+#DEF_CPU_TYPE2 = -DCPU_RV32M1_ri5cy
+
 PROGRAM_CFLAGS = -Wall -g -Os 
 PROGRAM_CFLAGS_EXT = -msmall-data-limit=8 -mno-save-restore -O0 -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -fno-common -ffreestanding -fno-builtin -Wall -g -DDEBUG -DPRINTF_FLOAT_ENABLE=0 -DSCANF_FLOAT_ENABLE=0 -DPRINTF_ADVANCED_ENABLE=0 -DSCANF_ADVANCED_ENABLE=0 -std=gnu99 -c
 
@@ -198,7 +229,13 @@ OBJCOPY ?= $(subst gcc,objcopy,$(wordlist 1,1,$(CC)))
 OBJDUMP ?= $(subst gcc,objdump,$(wordlist 1,1,$(CC)))
 
 #LINKER_SCRIPT ?= link.ld
-LINKER_SCRIPT ?= RV32M1_ri5cy_flash.ld
+
+# NOTE: Local copy of RTOSDemo_zero_riscy_flash.ld as need to make changes to it for ibex 
+ifeq ($(PROGRAM),RTOSDemo_zero_riscy)
+  LINKER_SCRIPT ?= $(FREERTOS_C_SRC_DIR_6)/RV32M1_ri5cy_flash.ld
+else
+  LINKER_SCRIPT ?= $(FREERTOS_MOD_DIR)/linker_RTOSDemo_ibex.ld
+endif
 
 #CRT ?= crt0.S
 #CRT ?= Source/portable/portASM.S
@@ -206,7 +243,7 @@ ASM_SRCS_DIRS = $(FREERTOS_ASM_SRCS_1) $(FREERTOS_ASM_SRCS_2) $(FREERTOS_ASM_SRC
 ASM_SRCS = $(filter %.S, $(ASM_SRCS_DIRS))
 
 CFLAGS ?= -march=$(ARCH) -mabi=ilp32 -static -mcmodel=medany \
-	-fvisibility=hidden -nostdlib -nostartfiles $(PROGRAM_CFLAGS) $(PROGRAM_CFLAGS_EXT) $(DEF_CPU_INT_HANDLER) $(DEF_CPU_TYPE)
+	-fvisibility=hidden -nostdlib -nostartfiles $(PROGRAM_CFLAGS) $(PROGRAM_CFLAGS_EXT) $(DEF_CPU_INT_HANDLER) $(DEF_CPU_TYPE1) $(DEF_CPU_TYPE2)
 LDFLAGS ?= -msmall-data-limit=8 -mno-save-restore -O0 -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -fno-common -ffreestanding -fno-builtin -Wall -g \
 	-nostdlib -Xlinker --gc-sections -Wl,-Map,$(PROGRAM).map -march=$(ARCH) -Xlinker -static -Xlinker -z -Xlinker muldefs -Xlinker -static -Xlinker -z -Xlinker muldefs
 LDFLAGS_EXT ?= -lnosys -lgcc -lc -lm -lm -lg -lgcc -lnosys -Xlinker --end-group
@@ -244,7 +281,8 @@ $(PROGRAM).elf: $(OBJS) $(LINKER_SCRIPT)
 	$(CC) $(CFLAGS) -MMD -c $(INCS) -o $@ $<
 
 clean:
-	$(RM) -f *.o *.d
+	$(RM) -f *.o *.d; \
+  find $(FREERTOS_SRC_DIR) -type f -name "*.o" | xargs rm -f ; find $(FREERTOS_SRC_DIR) -type f -name "*.d" | xargs rm -f
 
 distclean: clean
 	$(RM) -f $(OUTFILES)

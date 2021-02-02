@@ -360,11 +360,15 @@ static void DefaultIRQHandler(void)
    ---------------------------------------------------------------------------- */
 
 void SystemInit (void) {
-#if (DISABLE_WDOG)
-  WDOG1->CNT = 0xD928C520U;
-  WDOG1->TOVAL = 0xFFFF;
-  WDOG1->CS = (uint32_t) ((WDOG1->CS) & ~WDOG_CS_EN_MASK) | WDOG_CS_UPDATE_MASK;
-#endif /* (DISABLE_WDOG) */
+#if (CPU_RV32M1_ibex)
+
+#else 
+  #if (DISABLE_WDOG)
+    WDOG1->CNT = 0xD928C520U;
+    WDOG1->TOVAL = 0xFFFF;
+    WDOG1->CS = (uint32_t) ((WDOG1->CS) & ~WDOG_CS_EN_MASK) | WDOG_CS_UPDATE_MASK;
+  #endif /* (DISABLE_WDOG) */
+#endif /* (CPU_RV32M1_ibex) */
 
   SystemInitHook();
 
@@ -377,11 +381,14 @@ void SystemInit (void) {
   __ASM volatile("csrw 0x305, %0" :: "r"((uint32_t)__VECTOR_TABLE)); /* MTVEC */
   __ASM volatile("csrw 0x005, %0" :: "r"((uint32_t)__VECTOR_TABLE)); /* UTVEC */
 
+#if (CPU_RV32M1_ibex)
+#else
   /* Clear all pending flags. */
   EVENT_UNIT->INTPTPENDCLEAR = 0xFFFFFFFF;
   EVENT_UNIT->EVTPENDCLEAR = 0xFFFFFFFF;
   /* Set all interrupt as secure interrupt. */
   EVENT_UNIT->INTPTSECURE = 0xFFFFFFFF;
+#endif /* (RISCV_IBEX) */
 }
 
 /* ----------------------------------------------------------------------------

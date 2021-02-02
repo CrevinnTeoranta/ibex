@@ -29,6 +29,9 @@
     .section .vectors, "ax"
     .option norvc;
 
+#ifdef CPU_RV32M1_ibex
+    .org 0x00
+#endif
     jal x0, IRQ_Handler
     jal x0, IRQ_Handler
     jal x0, IRQ_Handler
@@ -62,6 +65,9 @@
     jal x0, IRQ_Handler
     jal x0, IRQ_Handler
 
+#ifdef CPU_RV32M1_ibex
+    .org 0x80
+#endif
     // reset vector
     jal x0, Reset_Handler
 
