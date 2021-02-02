@@ -52,11 +52,13 @@ run-simple-system: sw-simple-hello | $(Vibex_simple_system)
 		--raminit=$(simple-system-program)
 
 
-# Arty A7 FPGA example
+# Arty A7 & Artix 7 FPGA examples
 # Use the following targets (depending on your hardware):
 # - "build-arty-35"
 # - "build-arty-100"
+# - "build-artix7-100"
 # - "program-arty"
+# - "program-artix7"
 arty-sw-program = examples/sw/led/led.vmem
 sw-led: $(arty-sw-program)
 
@@ -74,6 +76,12 @@ build-arty-100: sw-led
 	fusesoc --cores-root=. run --target=synth --setup --build \
 		lowrisc:ibex:top_artya7 --part xc7a100tcsg324-1
 
+.PHONY: build-artix7-100
+build-artix7-100: sw-led
+	fusesoc --cores-root=. run --target=synth --setup --build \
+		lowrisc:ibex:top_artix7 --part xc7a100tcsg324-1 \
+      $(FUSESOC_CONFIG_OPTS)
+
 .PHONY: program-arty
 program-arty:
 	fusesoc --cores-root=. run --target=synth --run \
@@ -83,11 +91,6 @@ program-arty:
 program-artix7:
 	fusesoc --cores-root=. run --target=synth --run \
 		lowrisc:ibex:top_artix7
-
-.PHONY: build-artix7-100
-build-artix7-100: sw-led
-	fusesoc --cores-root=. run --target=synth --setup --build \
-		lowrisc:ibex:top_artix7 --part xc7a100tcsg324-1
 
 .PHONY: build-artix7-100_tb
 build-artix7-100_tb: sw-led
