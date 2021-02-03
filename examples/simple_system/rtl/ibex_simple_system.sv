@@ -232,7 +232,7 @@ module ibex_simple_system (
     // default steering to generate error response if address is not within the range
     dev_sel_s1n = 3'd4;
     for (int i = 0; i < NrDevices; i++) begin
-      if ((axi_d_host2xbar.aw_addr & cfg_device_addr_mask[i]) == cfg_device_addr_base[i]) begin
+      if ((axi_d_host2xbar.awaddr & cfg_device_addr_mask[i]) == cfg_device_addr_base[i]) begin
         dev_sel_s1n = i;
       end
     end
