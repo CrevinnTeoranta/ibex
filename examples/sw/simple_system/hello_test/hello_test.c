@@ -30,11 +30,11 @@ int main(int argc, char **argv) {
       last_elapsed_time = cur_time;
 
       if (last_elapsed_time & 1) {
-        puts("Tick! (Reading from ToE)\n");
-        toe_read = DEV_READ(TOE_BASE, 0);
+        puts("Tick! (Writing to ToE)\n");
+        DEV_WRITE(TOE_BASE, 0x0000DEAD + toe_read);
       } else {
-        puts("Tock! (Writing to ToE)\n");
-        DEV_WRITE(TOE_BASE, 0xDEAD0000 + toe_read);
+        puts("Tock! (Reading from ToE)\n");
+        toe_read = DEV_READ(TOE_BASE, 0);
       }
     }
     asm volatile("wfi"); // WFI = Wait For Interrupt

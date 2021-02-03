@@ -98,6 +98,16 @@ module ibex_simple_system (
   logic [top_pkg::AXI_DW -1:0] device_rdata  [NrDevices];
   logic                        device_err    [NrDevices];
 
+  // dma
+  logic                        toe2ram_req;
+  logic [top_pkg::AXI_AW -1:0] toe2ram_addr;
+  logic                        toe2ram_we;
+  logic [top_pkg::AXI_DSW-1:0] toe2ram_be;
+  logic [top_pkg::AXI_DW -1:0] toe2ram_wdata;
+  logic                        toe2ram_rvalid;
+  logic [top_pkg::AXI_DW -1:0] toe2ram_rdata;
+  logic                        toe2ram_err;
+
   // Device address mapping
   logic [top_pkg::AXI_AW-1:0] cfg_device_addr_base [NrDevices];
   logic [top_pkg::AXI_AW-1:0] cfg_device_addr_mask [NrDevices];
@@ -139,6 +149,7 @@ module ibex_simple_system (
   // Tie-off unused error signals
   assign device_err[Ram] = 1'b0;
   assign device_err[SimCtrl] = 1'b0;
+  assign toe2ram_err = 1'b0;
 
   // Connections from Host to Xbar
   axi_pkg::axi_h2d_t axi_d_host2xbar;
@@ -147,6 +158,10 @@ module ibex_simple_system (
   // Connections from xbar to devices
   axi_pkg::axi_h2d_t axi_d_xbar2device[NrDevices];
   axi_pkg::axi_d2h_t axi_d_device2xbar[NrDevices];
+
+  // DMA connections
+  axi_pkg::axi_h2d_t axi_dma_toe2ram;
+  axi_pkg::axi_d2h_t axi_dma_ram2toe;
 
   ibex_core_tracing #(
       .SecureIbex      ( SecureIbex      ),
@@ -276,7 +291,24 @@ module ibex_simple_system (
       .axi_o   (axi_d_device2xbar[Ram]),
       .axi_i   (axi_d_xbar2device[Ram])
     );
-  ram_2p #(
+  axi_adapter_device axi_dma_toe2ram_adapter (
+      .clk_i   (clk_sys),
+      .rst_ni  (rst_sys_n),
+
+      .req_o   (toe2ram_req),
+      .gnt_i   (1'b1),
+      .we_o    (toe2ram_we),
+      .be_o    (toe2ram_be),
+      .addr_o  (toe2ram_addr),
+      .wdata_o (toe2ram_wdata),
+      .valid_i (toe2ram_rvalid),
+      .rdata_i (toe2ram_rdata),
+      .err_i   (toe2ram_err),
+
+      .axi_o   (axi_dma_ram2toe),
+      .axi_i   (axi_dma_toe2ram)
+    );
+  ram_3p #(
       .Depth(1024*1024/4),
       .MemInitFile(SRAMInitFile)
     ) u_ram (
@@ -297,7 +329,15 @@ module ibex_simple_system (
       .b_addr_i    (instr_addr),
       .b_wdata_i   (top_pkg::AXI_DW'(0)),
       .b_rvalid_o  (instr_rvalid),
-      .b_rdata_o   (instr_rdata)
+      .b_rdata_o   (instr_rdata),
+
+      .c_req_i     (toe2ram_req),
+      .c_we_i      (toe2ram_we),
+      .c_be_i      (toe2ram_be),
+      .c_addr_i    (toe2ram_addr),
+      .c_wdata_i   (toe2ram_wdata),
+      .c_rvalid_o  (toe2ram_rvalid),
+      .c_rdata_o   (toe2ram_rdata)
     );
 
   // Simulator Ctrl
@@ -378,7 +418,10 @@ module ibex_simple_system (
       .rst_ni     (rst_sys_n),
 
       .axi_o      (axi_d_device2xbar[ToE]),
-      .axi_i      (axi_d_xbar2device[ToE])
+      .axi_i      (axi_d_xbar2device[ToE]),
+
+      .axi_dma_o  (axi_dma_toe2ram),
+      .axi_dma_i  (axi_dma_ram2toe)
     );
 
   export "DPI-C" function mhpmcounter_get;
