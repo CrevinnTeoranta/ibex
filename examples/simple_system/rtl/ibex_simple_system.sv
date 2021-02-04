@@ -163,6 +163,9 @@ module ibex_simple_system (
   axi_pkg::axi_h2d_t axi_dma_toe2ram;
   axi_pkg::axi_d2h_t axi_dma_ram2toe;
 
+  // Extra sim ctrl signals
+  logic end_sim;
+
   ibex_core_tracing #(
       .SecureIbex      ( SecureIbex      ),
       .PMPEnable       ( PMPEnable       ),
@@ -358,7 +361,7 @@ module ibex_simple_system (
       .axi_o   (axi_d_device2xbar[SimCtrl]),
       .axi_i   (axi_d_xbar2device[SimCtrl])
     );
-  simulator_ctrl #(
+  sim_ctrl #(
     .LogName("ibex_simple_system.log")
     ) u_simulator_ctrl (
       .clk_i     (clk_sys),
@@ -370,7 +373,9 @@ module ibex_simple_system (
       .addr_i    (device_addr[SimCtrl]),
       .wdata_i   (device_wdata[SimCtrl]),
       .rvalid_o  (device_rvalid[SimCtrl]),
-      .rdata_o   (device_rdata[SimCtrl])
+      .rdata_o   (device_rdata[SimCtrl]),
+
+      .end_sim   (end_sim)
     );
 
   // Timer
@@ -391,7 +396,7 @@ module ibex_simple_system (
       .axi_o   (axi_d_device2xbar[Timer]),
       .axi_i   (axi_d_xbar2device[Timer])
     );
-  timer #(
+  timer_custom #(
     .DataWidth    (top_pkg::AXI_DW),
     .AddressWidth (top_pkg::AXI_AW)
     ) u_timer (
@@ -432,6 +437,12 @@ module ibex_simple_system (
 
 `ifdef UVM_TB
   `include "BenGen_bridge_tb_top.sv"
+`else
+  always @(posedge clk_i or negedge rst_ni) begin
+    if (rst_ni) begin
+      if (end_sim) $finish;
+    end
+  end
 `endif
 
 endmodule
