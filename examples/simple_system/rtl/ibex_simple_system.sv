@@ -61,7 +61,8 @@ module ibex_simple_system (
   logic clk_sys = 1'b0, rst_sys_n;
 
   typedef enum logic {
-    CoreD
+    CoreD,
+    ToE_DMA
   } bus_host_e;
 
   typedef enum logic[1:0] {
@@ -73,6 +74,7 @@ module ibex_simple_system (
 
   localparam int NrDevices = 4;
   localparam int NrHosts = 1;
+  localparam int NrDMAMasters = 1;
 
   // interrupts
   logic timer_irq;
@@ -159,9 +161,16 @@ module ibex_simple_system (
   axi_pkg::axi_h2d_t axi_d_xbar2device[NrDevices];
   axi_pkg::axi_d2h_t axi_d_device2xbar[NrDevices];
 
-  // DMA connections
-  axi_pkg::axi_h2d_t axi_dma_toe2ram;
-  axi_pkg::axi_d2h_t axi_dma_ram2toe;
+  // Connections from Xbar and DMA Masters to DMA Controller
+  axi_pkg::axi_h2d_t axi_d_master2dma[NrHosts + NrDMAMasters];
+  axi_pkg::axi_d2h_t axi_d_dma2master[NrHosts + NrDMAMasters];
+
+  // Connections from DMA Controller to RAM
+  axi_pkg::axi_h2d_t axi_d_dma2ram;
+  axi_pkg::axi_d2h_t axi_d_ram2dma;
+
+  assign axi_d_master2dma[CoreD] = axi_d_xbar2device[Ram];
+  assign axi_d_device2xbar[Ram] = axi_d_dma2master[CoreD];
 
   // Extra sim ctrl signals
   logic end_sim;
@@ -277,6 +286,25 @@ module ibex_simple_system (
   );
 
   // SRAM block for instruction and data storage
+  axi_socket_m1 #(
+    .M         (NrHosts + NrDMAMasters),
+    .HReqPass  (2'h3),
+    .HRspPass  (2'h3),
+    .HReqDepth (8'h0),
+    .HRspDepth (8'h0),
+    .DReqPass  (1'b1),
+    .DRspPass  (1'b1),
+    .DReqDepth (4'h0),
+    .DRspDepth (4'h0)
+  ) u_sm1 (
+    .clk_i   (clk_sys),
+    .rst_ni  (rst_sys_n),
+    .axi_h_i (axi_d_master2dma),
+    .axi_h_o (axi_d_dma2master),
+    .axi_d_o (axi_d_dma2ram),
+    .axi_d_i (axi_d_ram2dma)
+  );
+
   axi_adapter_device axi_d_xbar2ram_adapter (
       .clk_i   (clk_sys),
       .rst_ni  (rst_sys_n),
@@ -291,26 +319,10 @@ module ibex_simple_system (
       .rdata_i (device_rdata[Ram]),
       .err_i   (device_err[Ram]),
 
-      .axi_o   (axi_d_device2xbar[Ram]),
-      .axi_i   (axi_d_xbar2device[Ram])
+      .axi_o   (axi_d_ram2dma),
+      .axi_i   (axi_d_dma2ram)
     );
-  axi_adapter_device axi_dma_toe2ram_adapter (
-      .clk_i   (clk_sys),
-      .rst_ni  (rst_sys_n),
 
-      .req_o   (toe2ram_req),
-      .gnt_i   (1'b1),
-      .we_o    (toe2ram_we),
-      .be_o    (toe2ram_be),
-      .addr_o  (toe2ram_addr),
-      .wdata_o (toe2ram_wdata),
-      .valid_i (toe2ram_rvalid),
-      .rdata_i (toe2ram_rdata),
-      .err_i   (toe2ram_err),
-
-      .axi_o   (axi_dma_ram2toe),
-      .axi_i   (axi_dma_toe2ram)
-    );
   ram_3p #(
       .Depth(1024*1024/4),
       .MemInitFile(SRAMInitFile)
@@ -332,15 +344,7 @@ module ibex_simple_system (
       .b_addr_i    (instr_addr),
       .b_wdata_i   (top_pkg::AXI_DW'(0)),
       .b_rvalid_o  (instr_rvalid),
-      .b_rdata_o   (instr_rdata),
-
-      .c_req_i     (toe2ram_req),
-      .c_we_i      (toe2ram_we),
-      .c_be_i      (toe2ram_be),
-      .c_addr_i    (toe2ram_addr),
-      .c_wdata_i   (toe2ram_wdata),
-      .c_rvalid_o  (toe2ram_rvalid),
-      .c_rdata_o   (toe2ram_rdata)
+      .b_rdata_o   (instr_rdata)
     );
 
   // Simulator Ctrl
@@ -425,8 +429,8 @@ module ibex_simple_system (
       .axi_o      (axi_d_device2xbar[ToE]),
       .axi_i      (axi_d_xbar2device[ToE]),
 
-      .axi_dma_o  (axi_dma_toe2ram),
-      .axi_dma_i  (axi_dma_ram2toe)
+      .axi_dma_o  (axi_d_master2dma[ToE_DMA]),
+      .axi_dma_i  (axi_d_dma2master[ToE_DMA])
     );
 
   export "DPI-C" function mhpmcounter_get;
