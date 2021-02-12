@@ -65,14 +65,15 @@ module ibex_simple_system (
     ToE_DMA
   } bus_host_e;
 
-  typedef enum logic[1:0] {
+  typedef enum logic[2:0] {
     Ram,
     SimCtrl,
     Timer,
-    ToE // TODO priority
+    ToE,
+    DMACtrl // TODO priority
   } bus_device_e;
 
-  localparam int NrDevices = 4;
+  localparam int NrDevices = 5;
   localparam int NrHosts = 1;
   localparam int NrDMAMasters = 1;
 
@@ -121,6 +122,8 @@ module ibex_simple_system (
   assign cfg_device_addr_mask[Timer] = ~32'h3FF; // 1 kB
   assign cfg_device_addr_base[ToE] = 32'h40000; // TODO address base
   assign cfg_device_addr_mask[ToE] = ~32'h1FFFF; // TODO memory size 64 kB
+  assign cfg_device_addr_base[DMACtrl] = 32'h50000; // TODO address base
+  assign cfg_device_addr_mask[DMACtrl] = ~32'h3F; // TODO memory size 32B
 
   // Instruction fetch signals
   logic instr_req;
@@ -168,6 +171,12 @@ module ibex_simple_system (
   // Connections from DMA Controller to RAM
   axi_pkg::axi_h2d_t axi_d_dma2ram;
   axi_pkg::axi_d2h_t axi_d_ram2dma;
+
+  // DMA signals
+  logic dma_irq_reader_done;
+  logic dma_irq_writer_done;
+
+  logic ext_irq;
 
   assign axi_d_master2dma[CoreD] = axi_d_xbar2device[Ram];
   assign axi_d_device2xbar[Ram] = axi_d_dma2master[CoreD];
@@ -221,7 +230,7 @@ module ibex_simple_system (
 
       .irq_software_i        (1'b0),
       .irq_timer_i           (timer_irq),
-      .irq_external_i        (1'b0),
+      .irq_external_i        (ext_irq),
       .irq_fast_i            (15'b0),
       .irq_nm_i              (1'b0),
 
@@ -257,7 +266,7 @@ module ibex_simple_system (
   logic [2:0] dev_sel_s1n;
   always_comb begin
     // default steering to generate error response if address is not within the range
-    dev_sel_s1n = 3'd4;
+    dev_sel_s1n = 3'd5;
     for (int i = 0; i < NrDevices; i++) begin
       if ((axi_d_host2xbar.awaddr & cfg_device_addr_mask[i]) == cfg_device_addr_base[i]) begin
         dev_sel_s1n = i;
@@ -431,31 +440,37 @@ module ibex_simple_system (
 
       .axi_dma_o  (axi_d_master2dma[ToE_DMA]),
       .axi_dma_i  (axi_d_dma2master[ToE_DMA])
+
+      //.io_read_tdata('0),
+      //.io_read_tvalid('0),
+      //.io_read_tready(),
+      //.io_read_tuser('0),
+      //.io_read_tlast('0),
     );
 
   // DMA Controller
   DMATop u_dma_top (
     .clock(clk_sys),
     .reset(~rst_sys_n),
-    .io_control_aw_awaddr('0),
+    .io_control_aw_awaddr(axi_d_xbar2device[DMACtrl].awaddr),
     .io_control_aw_awprot('0),
-    .io_control_aw_awvalid('0),
-    .io_control_aw_awready(),
-    .io_control_w_wdata('0),
-    .io_control_w_wstrb('0),
-    .io_control_w_wvalid('0),
-    .io_control_w_wready(),
-    .io_control_b_bresp(),
-    .io_control_b_bvalid(),
-    .io_control_b_bready('0),
-    .io_control_ar_araddr('0),
+    .io_control_aw_awvalid(axi_d_xbar2device[DMACtrl].awvalid),
+    .io_control_aw_awready(axi_d_device2xbar[DMACtrl].awready),
+    .io_control_w_wdata(axi_d_xbar2device[DMACtrl].wdata),
+    .io_control_w_wstrb(axi_d_xbar2device[DMACtrl].wstrb),
+    .io_control_w_wvalid(axi_d_xbar2device[DMACtrl].wvalid),
+    .io_control_w_wready(axi_d_device2xbar[DMACtrl].wready),
+    .io_control_b_bresp(axi_d_device2xbar[DMACtrl].bresp[1:0]),
+    .io_control_b_bvalid(axi_d_device2xbar[DMACtrl].bvalid),
+    .io_control_b_bready(axi_d_xbar2device[DMACtrl].bready),
+    .io_control_ar_araddr(axi_d_xbar2device[DMACtrl].araddr),
     .io_control_ar_arprot('0),
-    .io_control_ar_arvalid('0),
-    .io_control_ar_arready(),
-    .io_control_r_rdata(),
-    .io_control_r_rresp(),
-    .io_control_r_rvalid(),
-    .io_control_r_rready('0),
+    .io_control_ar_arvalid(axi_d_xbar2device[DMACtrl].arvalid),
+    .io_control_ar_arready(axi_d_device2xbar[DMACtrl].arready),
+    .io_control_r_rdata(axi_d_device2xbar[DMACtrl].rdata),
+    .io_control_r_rresp(axi_d_device2xbar[DMACtrl].rresp[1:0]),
+    .io_control_r_rvalid(axi_d_device2xbar[DMACtrl].rvalid),
+    .io_control_r_rready(axi_d_xbar2device[DMACtrl].rready),
     .io_read_tdata('0),
     .io_read_tvalid('0),
     .io_read_tready(),
@@ -498,11 +513,18 @@ module ibex_simple_system (
     .io_write_r_rlast('0),
     .io_write_r_rvalid('0),
     .io_write_r_rready(),
-    .io_irq_readerDone(),
-    .io_irq_writerDone(),
+    .io_irq_readerDone(dma_irq_reader_done),
+    .io_irq_writerDone(dma_irq_writer_done),
     .io_sync_readerSync('0),
     .io_sync_writerSync('0)
   );
+
+  // Tying the extra dma control axi response signals off
+  assign axi_d_device2xbar[DMACtrl].bid = axi_d_xbar2device[DMACtrl].awid;
+  assign axi_d_device2xbar[DMACtrl].rid = axi_d_xbar2device[DMACtrl].arid;
+  assign axi_d_device2xbar[DMACtrl].rlast = axi_d_device2xbar[DMACtrl].rvalid;
+
+  assign ext_irq = dma_irq_reader_done | dma_irq_writer_done;
 
   export "DPI-C" function mhpmcounter_get;
 
