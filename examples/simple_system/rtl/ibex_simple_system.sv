@@ -62,7 +62,7 @@ module ibex_simple_system (
 
   typedef enum logic {
     CoreD,
-    ToE_DMA
+    ToE_RAM
   } bus_host_e;
 
   typedef enum logic[2:0] {
@@ -75,7 +75,7 @@ module ibex_simple_system (
 
   localparam int NrDevices = 5;
   localparam int NrHosts = 1;
-  localparam int NrDMAMasters = 1;
+  localparam int NrRAMMasters = 1;
 
   // interrupts
   logic timer_irq;
@@ -165,12 +165,12 @@ module ibex_simple_system (
   axi_pkg::axi_d2h_t axi_d_device2xbar[NrDevices];
 
   // Connections from Xbar and DMA Masters to DMA Controller
-  axi_pkg::axi_h2d_t axi_d_master2dma[NrHosts + NrDMAMasters];
-  axi_pkg::axi_d2h_t axi_d_dma2master[NrHosts + NrDMAMasters];
+  axi_pkg::axi_h2d_t axi_d_master2m[NrHosts + NrRAMMasters];
+  axi_pkg::axi_d2h_t axi_d_m2master[NrHosts + NrRAMMasters];
 
-  // Connections from DMA Controller to RAM
-  axi_pkg::axi_h2d_t axi_d_dma2ram;
-  axi_pkg::axi_d2h_t axi_d_ram2dma;
+  // Connections from socket_m1 to RAM
+  axi_pkg::axi_h2d_t axi_d_m2ram;
+  axi_pkg::axi_d2h_t axi_d_ram2m;
 
   // DMA signals
   logic dma_irq_reader_done;
@@ -178,8 +178,8 @@ module ibex_simple_system (
 
   logic ext_irq;
 
-  assign axi_d_master2dma[CoreD] = axi_d_xbar2device[Ram];
-  assign axi_d_device2xbar[Ram] = axi_d_dma2master[CoreD];
+  assign axi_d_master2m[CoreD] = axi_d_xbar2device[Ram];
+  assign axi_d_device2xbar[Ram] = axi_d_m2master[CoreD];
 
   // Extra sim ctrl signals
   logic end_sim;
@@ -296,7 +296,7 @@ module ibex_simple_system (
 
   // SRAM block for instruction and data storage
   axi_socket_m1 #(
-    .M         (NrHosts + NrDMAMasters),
+    .M         (NrHosts + NrRAMMasters),
     .HReqPass  (2'h3),
     .HRspPass  (2'h3),
     .HReqDepth (8'h0),
@@ -308,10 +308,10 @@ module ibex_simple_system (
   ) u_sm1 (
     .clk_i   (clk_sys),
     .rst_ni  (rst_sys_n),
-    .axi_h_i (axi_d_master2dma),
-    .axi_h_o (axi_d_dma2master),
-    .axi_d_o (axi_d_dma2ram),
-    .axi_d_i (axi_d_ram2dma)
+    .axi_h_i (axi_d_master2m),
+    .axi_h_o (axi_d_m2master),
+    .axi_d_o (axi_d_m2ram),
+    .axi_d_i (axi_d_ram2m)
   );
 
   axi_adapter_device axi_d_xbar2ram_adapter (
@@ -328,8 +328,8 @@ module ibex_simple_system (
       .rdata_i (device_rdata[Ram]),
       .err_i   (device_err[Ram]),
 
-      .axi_o   (axi_d_ram2dma),
-      .axi_i   (axi_d_dma2ram)
+      .axi_o   (axi_d_ram2m),
+      .axi_i   (axi_d_m2ram)
     );
 
   ram_3p #(
@@ -438,8 +438,8 @@ module ibex_simple_system (
       .axi_o      (axi_d_device2xbar[ToE]),
       .axi_i      (axi_d_xbar2device[ToE]),
 
-      .axi_dma_o  (axi_d_master2dma[ToE_DMA]),
-      .axi_dma_i  (axi_d_dma2master[ToE_DMA])
+      .axi_dma_o  (axi_d_master2m[ToE_RAM]),
+      .axi_dma_i  (axi_d_m2master[ToE_RAM])
 
       //.io_read_tdata('0),
       //.io_read_tvalid('0),
