@@ -115,15 +115,15 @@ module ibex_simple_system (
   logic [top_pkg::AXI_AW-1:0] cfg_device_addr_base [NrDevices];
   logic [top_pkg::AXI_AW-1:0] cfg_device_addr_mask [NrDevices];
   assign cfg_device_addr_base[Ram] = 32'h100000;
-  assign cfg_device_addr_mask[Ram] = ~32'hFFFFF; // 1 MB
+  assign cfg_device_addr_mask[Ram] = ~32'hFFF; // 4 kB
   assign cfg_device_addr_base[SimCtrl] = 32'h20000;
   assign cfg_device_addr_mask[SimCtrl] = ~32'h3FF; // 1 kB
   assign cfg_device_addr_base[Timer] = 32'h30000;
   assign cfg_device_addr_mask[Timer] = ~32'h3FF; // 1 kB
   assign cfg_device_addr_base[ToE] = 32'h40000; // TODO address base
   assign cfg_device_addr_mask[ToE] = ~32'h1FFFF; // TODO memory size 64 kB
-  assign cfg_device_addr_base[DMACtrl] = 32'h50000; // TODO address base
-  assign cfg_device_addr_mask[DMACtrl] = ~32'h3F; // TODO memory size 32B
+  assign cfg_device_addr_base[DMACtrl] = 32'h400000; // TODO address base
+  assign cfg_device_addr_mask[DMACtrl] = ~32'hFFFFF; // TODO memory size 1 MB
 
   // Instruction fetch signals
   logic instr_req;
