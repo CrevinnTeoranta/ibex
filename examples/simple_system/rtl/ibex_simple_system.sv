@@ -62,7 +62,7 @@ module ibex_simple_system (
 
   typedef enum logic {
     CoreD,
-    ToE_RAM
+    DMAWrite
   } bus_host_e;
 
   typedef enum logic[2:0] {
@@ -101,21 +101,11 @@ module ibex_simple_system (
   logic [top_pkg::AXI_DW -1:0] device_rdata  [NrDevices];
   logic                        device_err    [NrDevices];
 
-  // dma
-  logic                        toe2ram_req;
-  logic [top_pkg::AXI_AW -1:0] toe2ram_addr;
-  logic                        toe2ram_we;
-  logic [top_pkg::AXI_DSW-1:0] toe2ram_be;
-  logic [top_pkg::AXI_DW -1:0] toe2ram_wdata;
-  logic                        toe2ram_rvalid;
-  logic [top_pkg::AXI_DW -1:0] toe2ram_rdata;
-  logic                        toe2ram_err;
-
   // Device address mapping
   logic [top_pkg::AXI_AW-1:0] cfg_device_addr_base [NrDevices];
   logic [top_pkg::AXI_AW-1:0] cfg_device_addr_mask [NrDevices];
   assign cfg_device_addr_base[Ram] = 32'h100000;
-  assign cfg_device_addr_mask[Ram] = ~32'hFFF; // 4 kB
+  assign cfg_device_addr_mask[Ram] = ~32'hFFFFF; // 1 MB
   assign cfg_device_addr_base[SimCtrl] = 32'h20000;
   assign cfg_device_addr_mask[SimCtrl] = ~32'h3FF; // 1 kB
   assign cfg_device_addr_base[Timer] = 32'h30000;
@@ -123,7 +113,7 @@ module ibex_simple_system (
   assign cfg_device_addr_base[ToE] = 32'h40000; // TODO address base
   assign cfg_device_addr_mask[ToE] = ~32'h1FFFF; // TODO memory size 64 kB
   assign cfg_device_addr_base[DMACtrl] = 32'h400000; // TODO address base
-  assign cfg_device_addr_mask[DMACtrl] = ~32'hFFFFF; // TODO memory size 1 MB
+  assign cfg_device_addr_mask[DMACtrl] = ~32'h3FFFFF; // TODO memory size 4 MB
 
   // Instruction fetch signals
   logic instr_req;
@@ -154,7 +144,6 @@ module ibex_simple_system (
   // Tie-off unused error signals
   assign device_err[Ram] = 1'b0;
   assign device_err[SimCtrl] = 1'b0;
-  assign toe2ram_err = 1'b0;
 
   // Connections from Host to Xbar
   axi_pkg::axi_h2d_t axi_d_host2xbar;
@@ -175,6 +164,11 @@ module ibex_simple_system (
   // DMA signals
   logic dma_irq_reader_done;
   logic dma_irq_writer_done;
+  logic [top_pkg::AXI_DW-1:0] read_tdata;
+  logic                       read_tvalid;
+  logic                       read_tready;
+  logic                       read_tuser;
+  logic                       read_tlast;
 
   logic ext_irq;
 
@@ -428,95 +422,41 @@ module ibex_simple_system (
     );
 
   // ToE Stub
-  toe #(
-    .DataWidth    (top_pkg::AXI_DW),
-    .AddressWidth (top_pkg::AXI_AW)
-    ) u_toe (
-      .clk_i      (clk_sys),
-      .rst_ni     (rst_sys_n),
+  toe u_toe (
+    .clk_i      (clk_sys),
+    .rst_ni     (rst_sys_n),
 
-      .axi_o      (axi_d_device2xbar[ToE]),
-      .axi_i      (axi_d_xbar2device[ToE]),
+    .axi_i      (axi_d_xbar2device[ToE]),
+    .axi_o      (axi_d_device2xbar[ToE]),
 
-      .axi_dma_o  (axi_d_master2m[ToE_RAM]),
-      .axi_dma_i  (axi_d_m2master[ToE_RAM])
-
-      //.io_read_tdata('0),
-      //.io_read_tvalid('0),
-      //.io_read_tready(),
-      //.io_read_tuser('0),
-      //.io_read_tlast('0),
-    );
+    .dma_read_tdata_o (read_tdata ),
+    .dma_read_tvalid_o(read_tvalid),
+    .dma_read_tready_i(read_tready),
+    .dma_read_tuser_o (read_tuser ),
+    .dma_read_tlast_o (read_tlast )
+  );
 
   // DMA Controller
-  DMATop u_dma_top (
-    .clock(clk_sys),
+  dma_controller u_dma_controller (
+    .clock(clk_sys   ),
     .reset(~rst_sys_n),
-    .io_control_aw_awaddr(axi_d_xbar2device[DMACtrl].awaddr),
-    .io_control_aw_awprot('0),
-    .io_control_aw_awvalid(axi_d_xbar2device[DMACtrl].awvalid),
-    .io_control_aw_awready(axi_d_device2xbar[DMACtrl].awready),
-    .io_control_w_wdata(axi_d_xbar2device[DMACtrl].wdata),
-    .io_control_w_wstrb(axi_d_xbar2device[DMACtrl].wstrb),
-    .io_control_w_wvalid(axi_d_xbar2device[DMACtrl].wvalid),
-    .io_control_w_wready(axi_d_device2xbar[DMACtrl].wready),
-    .io_control_b_bresp(axi_d_device2xbar[DMACtrl].bresp[1:0]),
-    .io_control_b_bvalid(axi_d_device2xbar[DMACtrl].bvalid),
-    .io_control_b_bready(axi_d_xbar2device[DMACtrl].bready),
-    .io_control_ar_araddr(axi_d_xbar2device[DMACtrl].araddr),
-    .io_control_ar_arprot('0),
-    .io_control_ar_arvalid(axi_d_xbar2device[DMACtrl].arvalid),
-    .io_control_ar_arready(axi_d_device2xbar[DMACtrl].arready),
-    .io_control_r_rdata(axi_d_device2xbar[DMACtrl].rdata),
-    .io_control_r_rresp(axi_d_device2xbar[DMACtrl].rresp[1:0]),
-    .io_control_r_rvalid(axi_d_device2xbar[DMACtrl].rvalid),
-    .io_control_r_rready(axi_d_xbar2device[DMACtrl].rready),
-    .io_read_tdata('0),
-    .io_read_tvalid('0),
-    .io_read_tready(),
-    .io_read_tuser('0),
-    .io_read_tlast('0),
-    .io_write_aw_awid(),
-    .io_write_aw_awaddr(),
-    .io_write_aw_awlen(),
-    .io_write_aw_awsize(),
-    .io_write_aw_awburst(),
-    .io_write_aw_awlock(),
-    .io_write_aw_awcache(),
-    .io_write_aw_awprot(),
-    .io_write_aw_awqos(),
-    .io_write_aw_awvalid(),
-    .io_write_aw_awready('0),
-    .io_write_w_wdata(),
-    .io_write_w_wstrb(),
-    .io_write_w_wlast(),
-    .io_write_w_wvalid(),
-    .io_write_w_wready('0),
-    .io_write_b_bid('0),
-    .io_write_b_bresp('0),
-    .io_write_b_bvalid('0),
-    .io_write_b_bready(),
-    .io_write_ar_arid(),
-    .io_write_ar_araddr(),
-    .io_write_ar_arlen(),
-    .io_write_ar_arsize(),
-    .io_write_ar_arburst(),
-    .io_write_ar_arlock(),
-    .io_write_ar_arcache(),
-    .io_write_ar_arprot(),
-    .io_write_ar_arqos(),
-    .io_write_ar_arvalid(),
-    .io_write_ar_arready('0),
-    .io_write_r_rid('0),
-    .io_write_r_rdata('0),
-    .io_write_r_rresp('0),
-    .io_write_r_rlast('0),
-    .io_write_r_rvalid('0),
-    .io_write_r_rready(),
-    .io_irq_readerDone(dma_irq_reader_done),
-    .io_irq_writerDone(dma_irq_writer_done),
-    .io_sync_readerSync('0),
-    .io_sync_writerSync('0)
+
+    .axi_ctrl_i(axi_d_xbar2device[DMACtrl]),
+    .axi_ctrl_o(axi_d_device2xbar[DMACtrl]),
+
+    .axi_write_o(axi_d_master2m[DMAWrite]),
+    .axi_write_i(axi_d_m2master[DMAWrite]),
+
+    .read_tdata_i (read_tdata ),
+    .read_tvalid_i(read_tvalid),
+    .read_tready_o(read_tready),
+    .read_tuser_i (read_tuser ),
+    .read_tlast_i (read_tlast ),
+
+    .irq_reader_done_o(dma_irq_reader_done),
+    .irq_writer_done_o(dma_irq_writer_done),
+    .reader_sync_i    (1'b0               ),
+    .writer_sync_i    (1'b0               )
   );
 
   // Tying the extra dma control axi response signals off
@@ -536,7 +476,7 @@ module ibex_simple_system (
   `include "BenGen_bridge_tb_top.sv"
 `else
   always @(posedge clk_i or negedge rst_ni) begin
-    if (rst_ni) begin
+    if (rst_sys_n) begin
       if (end_sim) $finish;
     end
   end
