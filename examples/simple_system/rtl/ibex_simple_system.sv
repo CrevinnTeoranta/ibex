@@ -475,7 +475,7 @@ module ibex_simple_system (
 `ifdef UVM_TB
   `include "BenGen_bridge_tb_top.sv"
 `else
-  always @(posedge clk_i or negedge rst_ni) begin
+  always @(posedge clk_sys or negedge rst_sys_n) begin
     if (rst_sys_n) begin
       if (end_sim) $finish;
     end
