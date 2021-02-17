@@ -162,13 +162,15 @@ module ibex_simple_system (
   axi_pkg::axi_d2h_t axi_d_ram2m;
 
   // DMA signals
+  axi_pkg::axi_h2d_t axi_dma2toe;
+  axi_pkg::axi_d2h_t axi_toe2dma;
   logic dma_irq_reader_done;
   logic dma_irq_writer_done;
-  logic [top_pkg::AXI_DW-1:0] read_tdata;
-  logic                       read_tvalid;
-  logic                       read_tready;
-  logic                       read_tuser;
-  logic                       read_tlast;
+  //logic [top_pkg::AXI_DW-1:0] read_tdata;
+  //logic                       read_tvalid;
+  //logic                       read_tready;
+  //logic                       read_tuser;
+  //logic                       read_tlast;
 
   logic ext_irq;
 
@@ -429,11 +431,14 @@ module ibex_simple_system (
     .axi_i      (axi_d_xbar2device[ToE]),
     .axi_o      (axi_d_device2xbar[ToE]),
 
-    .dma_read_tdata_o (read_tdata ),
-    .dma_read_tvalid_o(read_tvalid),
-    .dma_read_tready_i(read_tready),
-    .dma_read_tuser_o (read_tuser ),
-    .dma_read_tlast_o (read_tlast )
+    .axi_dma_i  (axi_dma2toe),
+    .axi_dma_o  (axi_toe2dma)
+
+    //.dma_read_tdata_o (read_tdata ),
+    //.dma_read_tvalid_o(read_tvalid),
+    //.dma_read_tready_i(read_tready),
+    //.dma_read_tuser_o (read_tuser ),
+    //.dma_read_tlast_o (read_tlast )
   );
 
   // DMA Controller
@@ -444,14 +449,17 @@ module ibex_simple_system (
     .axi_ctrl_i(axi_d_xbar2device[DMACtrl]),
     .axi_ctrl_o(axi_d_device2xbar[DMACtrl]),
 
+    .axi_read_o(axi_dma2toe),
+    .axi_read_i(axi_toe2dma),
+
     .axi_write_o(axi_d_master2m[DMAWrite]),
     .axi_write_i(axi_d_m2master[DMAWrite]),
 
-    .read_tdata_i (read_tdata ),
-    .read_tvalid_i(read_tvalid),
-    .read_tready_o(read_tready),
-    .read_tuser_i (read_tuser ),
-    .read_tlast_i (read_tlast ),
+    //.read_tdata_i (read_tdata ),
+    //.read_tvalid_i(read_tvalid),
+    //.read_tready_o(read_tready),
+    //.read_tuser_i (read_tuser ),
+    //.read_tlast_i (read_tlast ),
 
     .irq_reader_done_o(dma_irq_reader_done),
     .irq_writer_done_o(dma_irq_writer_done),
