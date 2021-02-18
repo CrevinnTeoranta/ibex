@@ -41,20 +41,21 @@ int main(int argc, char **argv) {
     asm volatile("wfi"); // WFI = Wait For Interrupt
   }
 
+  // Disable the timer, we don't want any other interrupts while we perform DMA transfer
   timer_disable();
 
   // Set up the fast-vdma
   fast_vdma_setup_chan(FAST_VDMA_MEM_BASE, 0x00040000, 0x00100800, 32, 32, 0);
 
-  // enable external interrupts
-  asm volatile("csrs  mie, %0\n" : : "r"(0x800));
-  // enable global interrupt
-  asm volatile("csrs  mstatus, %0\n" : : "r"(0x8));
+  // Configure and enable external interrupts
+  cfg_ext_irq(1);
 
+  // Initiate the DMA transfer
   fast_vdma_start(FAST_VDMA_MEM_BASE, 0, 1);
 
   asm volatile("wfi\nwfi\n"); // Wait For 2 Interrupts, one from reader one from writer
 
+  // Disable the fastvdma
   fast_vdma_stop(FAST_VDMA_MEM_BASE);
 
   return 0;
