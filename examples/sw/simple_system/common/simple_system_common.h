@@ -12,6 +12,9 @@
 #define DEV_READ(addr, val) (*((volatile uint32_t *)(addr)))
 #define PCOUNT_READ(name, dst) asm volatile("csrr %0, " #name ";" : "=r"(dst))
 
+#define MCAUSE_IRQ 0x80000000
+#define M_EXT_IRQ 0x800
+
 /**
  * Writes character to simulator out log. Signature matches c stdlib function
  * of the same name.

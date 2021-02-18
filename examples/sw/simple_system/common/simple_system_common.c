@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "simple_system_common.h"
+#include "custom-includes.h"
 
 int putchar(int c) {
   DEV_WRITE(SIM_CTRL_BASE + SIM_CTRL_OUT, (unsigned char)c);
@@ -132,7 +133,18 @@ unsigned int get_mtval() {
   return result;
 }
 
+unsigned int get_mip() {
+  uint32_t result;
+  __asm__ volatile("csrr %0, mip;" : "=r"(result));
+  return result;
+}
+
 void simple_exc_handler(void) {
+  uint32_t mcause = get_mcause();
+  uint32_t mip = get_mip();
+  if ((mcause & MCAUSE_IRQ) && (mip & M_EXT_IRQ)) {
+    fast_vdma_handle_irq(FAST_VDMA_MEM_BASE);
+  } else {
   puts("EXCEPTION!!!\n");
   puts("============\n");
   puts("MEPC:   0x");
@@ -145,6 +157,7 @@ void simple_exc_handler(void) {
   sim_halt();
 
   while(1);
+  }
 }
 
 volatile uint64_t time_elapsed;

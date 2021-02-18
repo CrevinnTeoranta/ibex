@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-#include "custom-includes.h"
 #include "simple_system_common.h"
+#include "custom-includes.h"
 
 int main(int argc, char **argv) {
   pcount_enable(0);
@@ -15,9 +15,6 @@ int main(int argc, char **argv) {
   putchar('\n');
   puthex(0xBAADF00D);
   putchar('\n');
-
-  // Set up the fast-vdma
-  fast_vdma_setup_chan((uint32_t*)FAST_VDMA_MEM_BASE, 0x00100800, 0x00100900, 32, 32, 32);
 
   pcount_enable(0);
 
@@ -43,6 +40,22 @@ int main(int argc, char **argv) {
     }
     asm volatile("wfi"); // WFI = Wait For Interrupt
   }
+
+  timer_disable();
+
+  // Set up the fast-vdma
+  fast_vdma_setup_chan(FAST_VDMA_MEM_BASE, 0x00040000, 0x00100800, 32, 32, 0);
+
+  // enable external interrupts
+  asm volatile("csrs  mie, %0\n" : : "r"(0x800));
+  // enable global interrupt
+  asm volatile("csrs  mstatus, %0\n" : : "r"(0x8));
+
+  fast_vdma_start(FAST_VDMA_MEM_BASE, 0, 1);
+
+  asm volatile("wfi\nwfi\n"); // Wait For 2 Interrupts, one from reader one from writer
+
+  fast_vdma_stop(FAST_VDMA_MEM_BASE);
 
   return 0;
 }
