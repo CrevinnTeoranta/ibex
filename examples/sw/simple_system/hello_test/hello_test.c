@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
   timer_disable();
 
   // Set up the fast-vdma
-  fast_vdma_setup_chan(FAST_VDMA_MEM_BASE, 0x00040000, 0x00100800, 32, 32, 0);
+  fast_vdma_setup_chan(FAST_VDMA_MEM_BASE, 0x00040000, 0x00102000, 32, 32, 0);
 
   // Configure and enable external interrupts
   cfg_ext_irq(1);
